@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  PARENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  teacherProfile TeacherProfile?
+  parentProfile  ParentProfile?
+  markedAttendance Attendance[]
+  sentNotifications ParentNotification[] @relation("SentNotifications")
+  
+  @@map("users")
+}
+
+model School {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  classes     Class[]
+  
+  @@map("schools")
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  grade       String
+  section     String   @default("A")
+  capacity    Int?     @default(30)
+  schoolId    String
+  teacherId   String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  school    School         @relation(fields: [schoolId], references: [id])
+  teacher   TeacherProfile? @relation(fields: [teacherId], references: [id])
+  students  Student[]
+  attendance Attendance[]
+  
+  @@map("classes")
+}
+
+model TeacherProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  employeeId String  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User            @relation(fields: [userId], references: [id])
+  classes   Class[]
+  messages  ParentMessage[]
+  
+  @@map("teacher_profiles")
+}
+
+model ParentProfile {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  phone                 String?
+  alternatePhone        String?
+  address               String?
+  occupation            String?
+  workAddress           String?
+  emergencyContact      String?
+  emergencyContactName  String?
+  relationship          String?   @default("Father")
+  notifications         Boolean   @default(true)
+  whatsappOptIn         Boolean   @default(true)
+  emailOptIn            Boolean   @default(true)
+  lastLoginAt           DateTime?
+  profilePicture        String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  user                  User                   @relation(fields: [userId], references: [id])
+  children              Student[]              @relation("ParentChildren")
+  parentNotifications   ParentNotification[]
+  sentMessages          ParentMessage[]
+  
+  @@map("parent_profiles")
+}
+
+model Student {
+  id          String    @id @default(cuid())
+  name        String
+  rollNumber  String    @unique
+  dateOfBirth DateTime? @db.Date
+  gender      String?
+  address     String?
+  phone       String?
+  email       String?
+  classId     String
+  parentId    String
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  class         Class                @relation(fields: [classId], references: [id])
+  parent        ParentProfile        @relation("ParentChildren", fields: [parentId], references: [id])
+  attendance    Attendance[]
+  notifications ParentNotification[]
+  messages      ParentMessage[]
+  
+  @@map("students")
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  studentId String
+  classId   String
+  date      DateTime         @db.Date
+  status    AttendanceStatus @default(ABSENT)
+  markedBy  String
+  remarks   String?
+  markedAt  DateTime         @default(now())
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relations
+  student   Student @relation(fields: [studentId], references: [id])
+  class     Class   @relation(fields: [classId], references: [id])
+  marker    User    @relation(fields: [markedBy], references: [id])
+  
+  @@unique([studentId, date])
+  @@index([classId, date])
+  @@index([date])
+  @@map("attendance")
+}
+
+model ParentNotification {
+  id        String    @id @default(cuid())
+  parentId  String
+  studentId String?   // Made optional for general notifications
+  type      String    // 'ABSENCE', 'ATTENDANCE_SUMMARY', 'SCHOOL_ANNOUNCEMENT', 'CUSTOM', 'GENERAL'
+  title     String
+  message   String
+  isRead    Boolean   @default(false)
+  sentBy    String?   // ID of user who sent the notification (for custom messages)
+  priority  String    @default("NORMAL") // 'HIGH', 'NORMAL', 'LOW'
+  sentAt    DateTime  @default(now())
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  parent    ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student   Student?      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  sender    User?         @relation("SentNotifications", fields: [sentBy], references: [id], onDelete: SetNull)
+  
+  @@index([parentId])
+  @@index([studentId])
+  @@index([type])
+  @@index([sentBy])
+  @@map("parent_notifications")
+}
+
+model ParentMessage {
+  id        String    @id @default(cuid())
+  parentId  String
+  teacherId String
+  studentId String?
+  subject   String
+  message   String
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  replyToId String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  parent    ParentProfile  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  student   Student?       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  replyTo   ParentMessage? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   ParentMessage[] @relation("MessageReplies")
+  
+  @@index([parentId])
+  @@index([teacherId])
+  @@index([studentId])
+  @@map("parent_messages")
+}
