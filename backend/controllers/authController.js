@@ -12,7 +12,8 @@ const generateToken = (userId, userRole) => {
 
 const login = async (req, res) => {
   try {
-    console.log(req);
+    console.log("Login request received");
+    console.log(req.body);
     const { email, password } = req?.body;
 
     if (!email || !password) {
