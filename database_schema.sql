@@ -240,7 +240,7 @@ INSERT INTO "users" ("id", "email", "password", "name", "role") VALUES
 
 INSERT INTO "teacher_profiles" ("id", "userId", "employeeId") VALUES 
 ('tprof_001', 'teacher_001', 'EMP001');
-
+  
 -- Insert sample parent
 INSERT INTO "users" ("id", "email", "password", "name", "role") VALUES 
 ('parent_001', 'parent@email.com', '$2b$10$hashedpassword', 'Bob Parent', 'PARENT');

@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // Replace with your actual IP address or use localhost for web development
 const API_BASE_URL = __DEV__
   ? "http://192.168.1.3:5000/api" // Development - use your computer's IP
-  : "https://attandance-new-1.onrender.com"; // Production or web
+  : "http://192.168.1.3:5000/api"; // Production or web
 
 // Create axios instance
 const apiClient = axios.create({

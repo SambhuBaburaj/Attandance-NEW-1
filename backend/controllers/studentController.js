@@ -95,6 +95,10 @@ const createStudent = async (req, res) => {
       email, 
       classId, 
       parentId,
+      admissionDate,
+      bloodGroup,
+      medicalConditions,
+      profilePicture,
       // Parent information for new parent creation
       parentInfo
     } = req.body;
@@ -202,6 +206,10 @@ const createStudent = async (req, res) => {
         email,
         classId,
         parentId: finalParentId,
+        admissionDate: admissionDate ? new Date(admissionDate) : null,
+        bloodGroup,
+        medicalConditions,
+        profilePicture,
         isActive: true
       },
       include: {
@@ -243,6 +251,10 @@ const updateStudent = async (req, res) => {
       email, 
       classId, 
       parentId,
+      admissionDate,
+      bloodGroup,
+      medicalConditions,
+      profilePicture,
       isActive 
     } = req.body;
 
@@ -300,6 +312,12 @@ const updateStudent = async (req, res) => {
         ...(email !== undefined && { email }),
         ...(classId && { classId }),
         ...(parentId && { parentId }),
+        ...(admissionDate !== undefined && { 
+          admissionDate: admissionDate ? new Date(admissionDate) : null 
+        }),
+        ...(bloodGroup !== undefined && { bloodGroup }),
+        ...(medicalConditions !== undefined && { medicalConditions }),
+        ...(profilePicture !== undefined && { profilePicture }),
         ...(isActive !== undefined && { isActive }),
         updatedAt: new Date()
       },

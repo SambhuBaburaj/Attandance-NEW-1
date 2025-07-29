@@ -16,6 +16,9 @@ import TakeAttendance from '../screens/TakeAttendance';
 import AttendanceHistory from '../screens/AttendanceHistory';
 import ViewChildren from '../screens/ViewChildren';
 import SendNotifications from '../screens/SendNotifications';
+import ManageSchools from '../screens/ManageSchools';
+import ManageTeachers from '../screens/ManageTeachers';
+import ViewReports from '../screens/ViewReports';
 
 const Stack = createStackNavigator();
 
@@ -59,6 +62,9 @@ const AppNavigator = () => {
         <Stack.Screen name="AttendanceHistory" component={AttendanceHistory} />
         <Stack.Screen name="ViewChildren" component={ViewChildren} />
         <Stack.Screen name="SendNotifications" component={SendNotifications} />
+        <Stack.Screen name="ManageSchools" component={ManageSchools} />
+        <Stack.Screen name="ManageTeachers" component={ManageTeachers} />
+        <Stack.Screen name="ViewReports" component={ViewReports} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -101,7 +101,7 @@ const markAttendance = async (req, res) => {
 
     // Process each student's attendance
     for (const studentAttendance of attendanceData) {
-      const { studentId, status, remarks } = studentAttendance;
+      const { studentId, status, remarks, checkInTime, checkOutTime } = studentAttendance;
 
       // Validate status
       const validStatuses = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
@@ -126,6 +126,8 @@ const markAttendance = async (req, res) => {
           data: {
             status,
             remarks: remarks || null,
+            checkInTime: checkInTime || null,
+            checkOutTime: checkOutTime || null,
             markedBy: userId,
             markedAt: new Date(),
             updatedAt: new Date()
@@ -155,6 +157,8 @@ const markAttendance = async (req, res) => {
             date: attendanceDate,
             status,
             remarks: remarks || null,
+            checkInTime: checkInTime || null,
+            checkOutTime: checkOutTime || null,
             markedBy: userId,
             markedAt: new Date()
           },

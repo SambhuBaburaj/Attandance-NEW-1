@@ -65,26 +65,46 @@ const getClassById = async (req, res) => {
 
 const createClass = async (req, res) => {
   try {
-    console.log("Creating a new class ");
-    const { name, grade, section, capacity, schoolId, teacherId, description } =
+    console.log("Creating a new class");
+    const { name, grade, section, capacity, schoolId, teacherId, description, roomNumber } =
       req.body;
 
-    if (!name || !grade || !schoolId) {
+    if (!name || !grade) {
       return res
         .status(400)
-        .json({ error: "Name, grade, and school ID are required" });
+        .json({ error: "Name and grade are required" });
     }
-    console.log("passed");
-    console.log(req.body);
+
+    // Use provided schoolId or default to the first available school
+    let finalSchoolId = schoolId;
+    if (!finalSchoolId) {
+      const defaultSchool = await prisma.school.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'asc' }
+      });
+      
+      if (!defaultSchool) {
+        return res.status(400).json({ 
+          error: "No active school found. Please create a school first or provide a school ID." 
+        });
+      }
+      
+      finalSchoolId = defaultSchool.id;
+      console.log("Using default school:", defaultSchool.name);
+    }
+
+    console.log("Creating class with data:", req.body);
     const newClass = await prisma.class.create({
       data: {
         name,
         grade,
         section: section || "A",
         capacity: capacity || 30,
-        schoolId,
+        schoolId: finalSchoolId,
         teacherId: teacherId || null,
         description: description || null,
+        roomNumber: roomNumber || null,
+        isActive: true,
       },
       include: {
         school: true,
@@ -106,7 +126,7 @@ const createClass = async (req, res) => {
 const updateClass = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, grade, section, capacity, teacherId, description } = req.body;
+    const { name, grade, section, capacity, teacherId, description, roomNumber, isActive } = req.body;
 
     const existingClass = await prisma.class.findUnique({
       where: { id },
@@ -125,6 +145,8 @@ const updateClass = async (req, res) => {
         ...(capacity && { capacity }),
         ...(teacherId !== undefined && { teacherId }),
         ...(description !== undefined && { description }),
+        ...(roomNumber !== undefined && { roomNumber }),
+        ...(isActive !== undefined && { isActive }),
         updatedAt: new Date(),
       },
       include: {
@@ -182,6 +204,9 @@ const getAvailableTeachers = async (req, res) => {
   try {
     console.log("coming here");
     const teachers = await prisma.teacherProfile.findMany({
+      where: {
+        isActive: true,
+      },
       include: {
         user: true,
         classes: true,

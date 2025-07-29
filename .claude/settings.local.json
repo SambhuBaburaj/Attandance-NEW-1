@@ -23,7 +23,9 @@
       "Bash(eas build:*)",
       "Bash(npx expo export:*)",
       "Bash(npx expo prebuild:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm run setup-db:*)",
+      "Bash(npm run init-db:*)"
     ],
     "deny": []
   }
