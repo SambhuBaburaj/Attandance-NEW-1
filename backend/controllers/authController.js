@@ -5,12 +5,15 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const generateToken = (userId, userRole) => {
-  return jwt.sign({ userId, role: userRole }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ userId, role: userRole }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 };
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    console.log(req);
+    const { email, password } = req?.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
@@ -156,22 +159,29 @@ const changePassword = async (req, res) => {
     const userId = req.user.userId;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: "Current password and new password are required" });
+      return res
+        .status(400)
+        .json({ error: "Current password and new password are required" });
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ error: "New password must be at least 6 characters long" });
+      return res
+        .status(400)
+        .json({ error: "New password must be at least 6 characters long" });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
     });
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
     if (!isCurrentPasswordValid) {
       return res.status(401).json({ error: "Current password is incorrect" });
     }
@@ -180,7 +190,7 @@ const changePassword = async (req, res) => {
 
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedNewPassword }
+      data: { password: hashedNewPassword },
     });
 
     res.json({ message: "Password changed successfully" });
