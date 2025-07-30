@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const whatsappService = require("./whatsappService");
+const PushNotificationService = require("./pushNotificationService");
 const prisma = new PrismaClient();
 
 // Helper function to send notifications for absent students
@@ -35,6 +36,8 @@ const sendAbsentNotifications = async (attendanceResults, classId, date) => {
 
     // Prepare notification data and create in-app notifications
     const notificationData = [];
+    const pushNotifications = [];
+    
     for (const record of absentStudents) {
       const student = record.student;
       const parent = student.parent;
@@ -56,6 +59,28 @@ const sendAbsentNotifications = async (attendanceResults, classId, date) => {
         console.log(`In-app notification created for parent of ${student.name}`);
       } catch (dbError) {
         console.error(`Failed to create in-app notification for ${student.name}:`, dbError);
+      }
+
+      // Send push notification for absence
+      try {
+        const pushResult = await PushNotificationService.sendAbsenceNotification(
+          parent.id,
+          student.name,
+          className,
+          dateStr,
+          record.remarks
+        );
+        
+        if (pushResult.success) {
+          console.log(`Push notification sent for ${student.name}`);
+          pushNotifications.push({ studentName: student.name, success: true });
+        } else {
+          console.log(`Push notification failed for ${student.name}:`, pushResult.error);
+          pushNotifications.push({ studentName: student.name, success: false, error: pushResult.error });
+        }
+      } catch (pushError) {
+        console.error(`Error sending push notification for ${student.name}:`, pushError);
+        pushNotifications.push({ studentName: student.name, success: false, error: pushError.message });
       }
 
       // Prepare WhatsApp notification data
@@ -97,8 +122,11 @@ const sendAbsentNotifications = async (attendanceResults, classId, date) => {
       }
     }
 
+    const successfulPushNotifications = pushNotifications.filter(p => p.success).length;
+    
     console.log(`Absence notifications processed for ${absentStudents.length} students`);
     console.log(`- In-app notifications: ${absentStudents.length}`);
+    console.log(`- Push notifications: ${successfulPushNotifications}/${pushNotifications.length}`);
     console.log(`- WhatsApp notifications: ${notificationData.length}`);
 
   } catch (error) {

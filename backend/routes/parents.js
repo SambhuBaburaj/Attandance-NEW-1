@@ -12,7 +12,8 @@ const {
   markAllNotificationsAsRead,
   sendMessageToTeacher,
   getMessages,
-  getAttendanceReport
+  getAttendanceReport,
+  updatePushToken
 } = require('../controllers/parentController');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
@@ -39,5 +40,8 @@ router.put('/notifications/mark-all-read', markAllNotificationsAsRead);
 // Messages with teachers
 router.get('/messages', getMessages);
 router.post('/messages', sendMessageToTeacher);
+
+// Push notifications
+router.post('/push-token', updatePushToken);
 
 module.exports = router;

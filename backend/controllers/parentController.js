@@ -681,6 +681,48 @@ const getAttendanceReport = async (req, res) => {
   }
 };
 
+// Update push token for parent
+const updatePushToken = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { pushToken, platform } = req.body;
+
+    if (!pushToken) {
+      return res.status(400).json({ error: 'Push token is required' });
+    }
+
+    // Find parent profile
+    const parentProfile = await prisma.parentProfile.findUnique({
+      where: { userId }
+    });
+
+    if (!parentProfile) {
+      return res.status(404).json({ error: 'Parent profile not found' });
+    }
+
+    // Update or create push token record
+    await prisma.parentProfile.update({
+      where: { userId },
+      data: {
+        pushToken: pushToken,
+        pushTokenPlatform: platform || 'unknown',
+        pushTokenUpdatedAt: new Date()
+      }
+    });
+
+    console.log(`Push token updated for parent ${parentProfile.id}: ${pushToken}`);
+    
+    res.json({ 
+      message: 'Push token updated successfully',
+      success: true 
+    });
+
+  } catch (error) {
+    console.error('Error updating push token:', error);
+    res.status(500).json({ error: 'Failed to update push token' });
+  }
+};
+
 module.exports = {
   getMyChildren,
   getChildAttendance,
@@ -694,4 +736,5 @@ module.exports = {
   sendMessageToTeacher,
   getMessages,
   getAttendanceReport,
+  updatePushToken,
 };

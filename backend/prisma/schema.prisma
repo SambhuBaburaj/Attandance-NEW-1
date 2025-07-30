@@ -103,6 +103,9 @@ model ParentProfile {
   notifications        Boolean   @default(true)
   whatsappOptIn        Boolean   @default(true)
   emailOptIn           Boolean   @default(true)
+  pushToken            String?
+  pushTokenPlatform    String?
+  pushTokenUpdatedAt   DateTime?
   lastLoginAt          DateTime?
   profilePicture       String?
   createdAt            DateTime  @default(now())

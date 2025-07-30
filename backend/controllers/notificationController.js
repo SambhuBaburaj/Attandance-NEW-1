@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const whatsappService = require('../services/whatsappService');
+const PushNotificationService = require('../services/pushNotificationService');
 const prisma = new PrismaClient();
 
 // Send custom notification to specific parent(s)
@@ -101,6 +102,7 @@ const sendCustomNotification = async (req, res) => {
     // Create notifications for all target parents
     const notifications = [];
     const whatsappData = [];
+    const parentIds = targetParents.map(p => p.id);
 
     for (const parent of targetParents) {
       // Debug: Check if parent exists
@@ -151,6 +153,20 @@ const sendCustomNotification = async (req, res) => {
       }
     }
 
+    // Send push notifications to all target parents
+    let pushNotificationResult = null;
+    try {
+      pushNotificationResult = await PushNotificationService.sendCustomNotification(
+        parentIds,
+        title,
+        message,
+        priority
+      );
+      console.log('Push notifications sent:', pushNotificationResult);
+    } catch (pushError) {
+      console.error('Error sending push notifications:', pushError);
+    }
+
     // Send WhatsApp notifications if requested
     let whatsappResult = null;
     if (whatsappData.length > 0) {
@@ -166,6 +182,12 @@ const sendCustomNotification = async (req, res) => {
       notificationsSent: notifications.length,
       targetType,
       notifications,
+      pushNotificationResult: pushNotificationResult ? {
+        success: pushNotificationResult.success,
+        sent: pushNotificationResult.result?.successful || 0,
+        failed: pushNotificationResult.result?.failed || 0,
+        total: pushNotificationResult.result?.totalSent || 0
+      } : null,
       whatsappResult: whatsappResult ? {
         sent: whatsappResult.sentCount,
         failed: whatsappResult.errorCount,
