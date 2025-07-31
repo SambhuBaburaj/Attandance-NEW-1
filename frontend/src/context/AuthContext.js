@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
+import NotificationService from '../services/notificationService';
+import apiClient from '../services/apiClient';
 
 const AuthContext = createContext({});
 
@@ -32,12 +34,35 @@ export const AuthProvider = ({ children }) => {
         setToken(storedToken);
         setUser(storedUser);
         setIsAuthenticated(true);
+        
+        // Setup push notifications for returning users
+        await setupPushNotifications(storedUser, storedToken);
       }
     } catch (error) {
       console.error('Error checking auth state:', error);
       await logout();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const setupPushNotifications = async (user, authToken) => {
+    try {
+      // Only setup push notifications for parents
+      if (user.role === 'PARENT') {
+        // Get or register for push token
+        let pushToken = await NotificationService.getStoredPushToken();
+        if (!pushToken) {
+          pushToken = await NotificationService.registerForPushNotifications();
+        }
+        
+        // Send token to backend if we have one
+        if (pushToken && authToken) {
+          await NotificationService.sendPushTokenToBackend(pushToken, user.id, apiClient);
+        }
+      }
+    } catch (error) {
+      console.error('Error setting up push notifications:', error);
     }
   };
 
@@ -49,6 +74,9 @@ export const AuthProvider = ({ children }) => {
       setToken(response.token);
       setUser(response.user);
       setIsAuthenticated(true);
+      
+      // Setup push notifications after successful login
+      await setupPushNotifications(response.user, response.token);
       
       return response;
     } catch (error) {

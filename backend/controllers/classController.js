@@ -6,7 +6,6 @@ const getAllClasses = async (req, res) => {
     console.log("Fetching all classes");
     const classes = await prisma.class.findMany({
       include: {
-        school: true,
         teacher: {
           include: {
             user: true,
@@ -34,7 +33,6 @@ const getClassById = async (req, res) => {
     const classData = await prisma.class.findUnique({
       where: { id },
       include: {
-        school: true,
         teacher: {
           include: {
             user: true,
@@ -66,31 +64,13 @@ const getClassById = async (req, res) => {
 const createClass = async (req, res) => {
   try {
     console.log("Creating a new class");
-    const { name, grade, section, capacity, schoolId, teacherId, description, roomNumber } =
+    const { name, grade, section, capacity, teacherId, description, roomNumber } =
       req.body;
 
     if (!name || !grade) {
       return res
         .status(400)
         .json({ error: "Name and grade are required" });
-    }
-
-    // Use provided schoolId or default to the first available school
-    let finalSchoolId = schoolId;
-    if (!finalSchoolId) {
-      const defaultSchool = await prisma.school.findFirst({
-        where: { isActive: true },
-        orderBy: { createdAt: 'asc' }
-      });
-      
-      if (!defaultSchool) {
-        return res.status(400).json({ 
-          error: "No active school found. Please create a school first or provide a school ID." 
-        });
-      }
-      
-      finalSchoolId = defaultSchool.id;
-      console.log("Using default school:", defaultSchool.name);
     }
 
     console.log("Creating class with data:", req.body);
@@ -100,14 +80,12 @@ const createClass = async (req, res) => {
         grade,
         section: section || "A",
         capacity: capacity || 30,
-        schoolId: finalSchoolId,
         teacherId: teacherId || null,
         description: description || null,
         roomNumber: roomNumber || null,
         isActive: true,
       },
       include: {
-        school: true,
         teacher: {
           include: {
             user: true,
@@ -150,7 +128,6 @@ const updateClass = async (req, res) => {
         updatedAt: new Date(),
       },
       include: {
-        school: true,
         teacher: {
           include: {
             user: true,

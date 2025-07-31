@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, Tex
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { parentService } from '../services/parentService';
+import NotificationService from '../services/notificationService';
 
 const ParentDashboard = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -47,6 +48,25 @@ const ParentDashboard = ({ navigation }) => {
       navigation.replace('Login');
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const testNotification = async () => {
+    try {
+      const success = await NotificationService.simulateIncomingNotification(
+        'Test Notification',
+        'This is a test notification from SchoolSync! Push notifications are working.',
+        { type: 'test', screen: 'ParentDashboard' }
+      );
+      
+      if (success) {
+        Alert.alert('Success', 'Test notification sent! Check your notification bar.');
+      } else {
+        Alert.alert('Error', 'Failed to send test notification. Please check permissions.');
+      }
+    } catch (error) {
+      console.error('Test notification error:', error);
+      Alert.alert('Error', 'Failed to send test notification');
     }
   };
 
@@ -105,6 +125,9 @@ const ParentDashboard = ({ navigation }) => {
         <Text style={[styles.welcome, { color: theme.surface }]}>Welcome, {user?.name}</Text>
         <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('SystemSettings')}>
           <Text style={[styles.settingsText, { color: theme.surface }]}>⚙️ Settings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.settingsButton, { marginLeft: 10 }]} onPress={testNotification}>
+          <Text style={[styles.settingsText, { color: theme.surface }]}>🔔 Test</Text>
         </TouchableOpacity>
       </View>
 

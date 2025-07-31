@@ -14,7 +14,6 @@ const getMyChildren = async (req, res) => {
           include: {
             class: {
               include: {
-                school: true,
                 teacher: {
                   include: {
                     user: true,

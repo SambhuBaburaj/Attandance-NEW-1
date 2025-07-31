@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
+import NotificationService from '../services/notificationService';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -16,7 +17,6 @@ import TakeAttendance from '../screens/TakeAttendance';
 import AttendanceHistory from '../screens/AttendanceHistory';
 import ViewChildren from '../screens/ViewChildren';
 import SendNotifications from '../screens/SendNotifications';
-import ManageSchools from '../screens/ManageSchools';
 import ManageTeachers from '../screens/ManageTeachers';
 import ViewReports from '../screens/ViewReports';
 
@@ -24,6 +24,19 @@ const Stack = createStackNavigator();
 
 const AppNavigator = () => {
   const { isAuthenticated, loading, getUserRole } = useAuth();
+  const navigationRef = useRef();
+
+  useEffect(() => {
+    // Setup notification listeners when app is ready
+    if (navigationRef.current) {
+      NotificationService.setupNotificationListeners(navigationRef.current);
+    }
+
+    // Cleanup listeners on unmount
+    return () => {
+      NotificationService.removeNotificationListeners();
+    };
+  }, []);
 
   if (loading) {
     return <LoadingScreen />;
@@ -44,7 +57,7 @@ const AppNavigator = () => {
   };
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -62,7 +75,6 @@ const AppNavigator = () => {
         <Stack.Screen name="AttendanceHistory" component={AttendanceHistory} />
         <Stack.Screen name="ViewChildren" component={ViewChildren} />
         <Stack.Screen name="SendNotifications" component={SendNotifications} />
-        <Stack.Screen name="ManageSchools" component={ManageSchools} />
         <Stack.Screen name="ManageTeachers" component={ManageTeachers} />
         <Stack.Screen name="ViewReports" component={ViewReports} />
       </Stack.Navigator>

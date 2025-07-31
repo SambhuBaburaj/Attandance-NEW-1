@@ -97,7 +97,6 @@ const getClassReport = async (req, res) => {
     const classInfo = await prisma.class.findUnique({
       where: { id: classId },
       include: {
-        school: true,
         teacher: {
           include: { user: true }
         },
@@ -175,7 +174,6 @@ const getClassReport = async (req, res) => {
 
     const report = {
       className: `${classInfo.name} (${classInfo.grade}-${classInfo.section})`,
-      school: classInfo.school.name,
       teacher: classInfo.teacher ? classInfo.teacher.user.name : 'No teacher assigned',
       totalStudents,
       activeStudents,
@@ -318,7 +316,6 @@ const getTeacherReport = async (req, res) => {
         user: true,
         classes: {
           include: {
-            school: true,
             students: true,
             _count: {
               select: { students: true }
@@ -363,7 +360,6 @@ const getTeacherReport = async (req, res) => {
         
         return {
           className: `${cls.name} (${cls.grade}-${cls.section})`,
-          school: cls.school.name,
           totalStudents: cls._count.students,
           attendanceRecords: total,
           presentCount: present,
@@ -404,7 +400,6 @@ const getTeacherReport = async (req, res) => {
 const getDashboardStats = async (req, res) => {
   try {
     // Get counts
-    const totalSchools = await prisma.school.count({ where: { isActive: true } });
     const totalTeachers = await prisma.teacherProfile.count({ where: { isActive: true } });
     const totalClasses = await prisma.class.count({ where: { isActive: true } });
     const totalStudents = await prisma.student.count({ where: { isActive: true } });
@@ -465,7 +460,6 @@ const getDashboardStats = async (req, res) => {
 
     const stats = {
       overview: {
-        totalSchools,
         totalTeachers,
         totalClasses,
         totalStudents,

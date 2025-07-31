@@ -24,6 +24,20 @@ enum AttendanceStatus {
   EXCUSED
 }
 
+enum NotificationType {
+  ABSENCE
+  ATTENDANCE_SUMMARY
+  SCHOOL_ANNOUNCEMENT
+  CUSTOM
+  GENERAL
+}
+
+enum NotificationPriority {
+  HIGH
+  NORMAL
+  LOW
+}
+
 // Core Models
 
 model User {
@@ -44,27 +58,6 @@ model User {
   @@map("users")
 }
 
-model School {
-  id              String   @id @default(cuid())
-  name            String
-  address         String
-  phone           String?
-  email           String?
-  principalName   String?
-  establishedYear Int?
-  website         String?
-  logo            String?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  classes            Class[]
-  attendanceSettings AttendanceSettings?
-  holidays           Holiday[]
-  
-  @@map("schools")
-}
 
 model TeacherProfile {
   id           String    @id @default(cuid())
@@ -126,7 +119,6 @@ model Class {
   grade       String
   section     String   @default("A")
   capacity    Int?     @default(30)
-  schoolId    String
   teacherId   String?
   description String?
   roomNumber  String?
@@ -135,7 +127,6 @@ model Class {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacher       TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   students      Student[]
   attendance    Attendance[]
@@ -200,19 +191,19 @@ model Attendance {
 }
 
 model ParentNotification {
-  id        String    @id @default(cuid())
+  id        String               @id @default(cuid())
   parentId  String
-  studentId String?   // Made optional for general notifications
-  type      String    // 'ABSENCE', 'ATTENDANCE_SUMMARY', 'SCHOOL_ANNOUNCEMENT', 'CUSTOM', 'GENERAL'
+  studentId String?              // Made optional for general notifications
+  type      NotificationType
   title     String
   message   String
-  isRead    Boolean   @default(false)
-  sentBy    String?   // ID of user who sent the notification (for custom messages)
-  priority  String    @default("NORMAL") // 'HIGH', 'NORMAL', 'LOW'
-  sentAt    DateTime  @default(now())
+  isRead    Boolean              @default(false)
+  sentBy    String?              // ID of user who sent the notification (for custom messages)
+  priority  NotificationPriority @default(NORMAL)
+  sentAt    DateTime             @default(now())
   readAt    DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
   // Relations
   parent  ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
@@ -295,21 +286,15 @@ model Holiday {
   date        DateTime @db.Date
   description String?
   isRecurring Boolean  @default(false)
-  schoolId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  // Relations
-  school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   
-  @@index([schoolId])
   @@index([date])
   @@map("holidays")
 }
 
 model AttendanceSettings {
   id                   String   @id @default(cuid())
-  schoolId             String   @unique
   autoMarkAbsentAfter  String   @default("10:00:00")
   lateThresholdMinutes Int      @default(15)
   notificationEnabled  Boolean  @default(true)
@@ -317,9 +302,6 @@ model AttendanceSettings {
   weeklySummaryDay     Int      @default(5) // Friday
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
-
-  // Relations
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   
   @@map("attendance_settings")
 }

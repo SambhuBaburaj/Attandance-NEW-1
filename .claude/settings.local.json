@@ -25,7 +25,14 @@
       "Bash(npx expo prebuild:*)",
       "Bash(git commit:*)",
       "Bash(npm run setup-db:*)",
-      "Bash(npm run init-db:*)"
+      "Bash(npm run init-db:*)",
+      "Bash(./gradlew:*)",
+      "Bash(find:*)",
+      "Bash(npx @react-native-community/cli:*)",
+      "Bash(npx expo run:android:*)",
+      "Bash(npx expo build:android:*)",
+      "Bash(git checkout:*)",
+      "Bash(psql:*)"
     ],
     "deny": []
   }

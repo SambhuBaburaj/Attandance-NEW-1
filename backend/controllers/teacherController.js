@@ -16,7 +16,6 @@ const getAllTeachers = async (req, res) => {
         },
         classes: {
           include: {
-            school: true,
             _count: {
               select: { students: true }
             }
@@ -51,7 +50,6 @@ const getTeacherById = async (req, res) => {
         },
         classes: {
           include: {
-            school: true,
             students: true,
             _count: {
               select: { students: true }
@@ -310,7 +308,6 @@ const getTeacherClasses = async (req, res) => {
       include: {
         classes: {
           include: {
-            school: true,
             students: true,
             _count: {
               select: { students: true }

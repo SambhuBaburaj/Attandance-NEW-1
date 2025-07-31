@@ -16,7 +16,6 @@ const getAllStudents = async (req, res) => {
       include: {
         class: {
           include: {
-            school: true,
             teacher: {
               include: {
                 user: true
@@ -50,7 +49,6 @@ const getStudentById = async (req, res) => {
       include: {
         class: {
           include: {
-            school: true,
             teacher: {
               include: {
                 user: true
@@ -215,7 +213,6 @@ const createStudent = async (req, res) => {
       include: {
         class: {
           include: {
-            school: true,
             teacher: {
               include: {
                 user: true
@@ -324,7 +321,6 @@ const updateStudent = async (req, res) => {
       include: {
         class: {
           include: {
-            school: true,
             teacher: {
               include: {
                 user: true
