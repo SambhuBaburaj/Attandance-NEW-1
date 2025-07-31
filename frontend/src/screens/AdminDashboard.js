@@ -33,11 +33,18 @@ const AdminDashboard = ({ navigation }) => {
       color: 'success'
     },
     { 
+      title: 'Attendance History', 
+      icon: '📊', 
+      screen: 'AdminAttendanceHistory',
+      description: 'View attendance reports',
+      color: 'primary'
+    },
+    { 
       title: 'Send Notifications', 
       icon: '📢', 
       screen: 'SendNotifications',
       description: 'Send alerts to parents',
-      color: 'primary'
+      color: 'warning'
     },
     { 
       title: 'Manage Teachers', 

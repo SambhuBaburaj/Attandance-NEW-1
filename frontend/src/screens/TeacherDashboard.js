@@ -18,9 +18,9 @@ const TeacherDashboard = ({ navigation }) => {
 
   const menuItems = [
     { title: 'Take Attendance', icon: '✅', screen: 'TakeAttendance' },
+    { title: 'Attendance History', icon: '📊', screen: 'ModernAttendanceHistory' },
     { title: 'View Classes', icon: '📚', screen: 'ViewClasses' },
     { title: 'Student List', icon: '👨‍🎓', screen: 'StudentList' },
-    { title: 'Attendance Reports', icon: '📊', screen: 'AttendanceReports' },
     { title: 'Class Schedule', icon: '📅', screen: 'ClassSchedule' },
     { title: 'System Settings', icon: '⚙️', screen: 'SystemSettings' },
   ];

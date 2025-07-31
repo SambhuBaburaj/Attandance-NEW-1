@@ -140,7 +140,7 @@ const ViewChildren = ({ navigation }) => {
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
-                  onPress={() => navigation.navigate('AttendanceHistory')}
+                  onPress={() => navigation.navigate('ModernAttendanceHistory')}
                 >
                   <Text style={styles.actionButtonText}>📅 View Attendance</Text>
                 </TouchableOpacity>

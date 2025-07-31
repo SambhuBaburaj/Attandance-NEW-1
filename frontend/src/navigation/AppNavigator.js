@@ -15,6 +15,8 @@ import ManageClasses from '../screens/ManageClasses';
 import ManageStudents from '../screens/ManageStudents';
 import TakeAttendance from '../screens/TakeAttendance';
 import AttendanceHistory from '../screens/AttendanceHistory';
+import ModernAttendanceHistory from '../screens/ModernAttendanceHistory';
+import AdminAttendanceHistory from '../screens/AdminAttendanceHistory';
 import ViewChildren from '../screens/ViewChildren';
 import SendNotifications from '../screens/SendNotifications';
 import ManageTeachers from '../screens/ManageTeachers';
@@ -73,6 +75,8 @@ const AppNavigator = () => {
         <Stack.Screen name="ManageStudents" component={ManageStudents} />
         <Stack.Screen name="TakeAttendance" component={TakeAttendance} />
         <Stack.Screen name="AttendanceHistory" component={AttendanceHistory} />
+        <Stack.Screen name="ModernAttendanceHistory" component={ModernAttendanceHistory} />
+        <Stack.Screen name="AdminAttendanceHistory" component={AdminAttendanceHistory} />
         <Stack.Screen name="ViewChildren" component={ViewChildren} />
         <Stack.Screen name="SendNotifications" component={SendNotifications} />
         <Stack.Screen name="ManageTeachers" component={ManageTeachers} />

@@ -510,11 +510,414 @@ const deleteAttendanceRecord = async (req, res) => {
   }
 };
 
+// Get attendance for date range with modern UI support
+const getAttendanceByDateRange = async (req, res) => {
+  try {
+    const { classId, startDate, endDate } = req.query;
+
+    if (!classId) {
+      return res.status(400).json({ error: 'Class ID is required' });
+    }
+
+    // Default to last 7 days if no dates provided
+    let start = startDate ? new Date(startDate) : new Date();
+    let end = endDate ? new Date(endDate) : new Date();
+    
+    if (!startDate) {
+      start.setDate(start.getDate() - 6); // Last 7 days
+    }
+
+    // Get class info
+    const classInfo = await prisma.class.findUnique({
+      where: { id: classId },
+      include: {
+        teacher: {
+          include: { user: true }
+        },
+        _count: {
+          select: { students: true }
+        }
+      }
+    });
+
+    if (!classInfo) {
+      return res.status(404).json({ error: 'Class not found' });
+    }
+
+    // Get attendance records for the date range
+    const attendanceRecords = await prisma.attendance.findMany({
+      where: {
+        classId,
+        date: {
+          gte: start,
+          lte: end
+        }
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            rollNumber: true
+          }
+        }
+      },
+      orderBy: [
+        { date: 'desc' },
+        { student: { rollNumber: 'asc' } }
+      ]
+    });
+
+    // Group by date and create daily summaries
+    const dailyAttendance = {};
+    const dateRange = [];
+    
+    // Create all dates in range
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateKey = currentDate.toISOString().split('T')[0];
+      dateRange.push(dateKey);
+      dailyAttendance[dateKey] = {
+        date: dateKey,
+        dayName: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+        totalStudents: classInfo._count.students,
+        present: 0,
+        absent: 0,
+        late: 0,
+        excused: 0,
+        unmarked: classInfo._count.students,
+        students: []
+      };
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Fill in actual attendance data
+    attendanceRecords.forEach(record => {
+      const dateKey = record.date.toISOString().split('T')[0];
+      if (dailyAttendance[dateKey]) {
+        dailyAttendance[dateKey][record.status.toLowerCase()]++;
+        dailyAttendance[dateKey].unmarked--;
+        dailyAttendance[dateKey].students.push({
+          id: record.student.id,
+          name: record.student.name,
+          rollNumber: record.student.rollNumber,
+          status: record.status,
+          remarks: record.remarks,
+          checkInTime: record.checkInTime
+        });
+      }
+    });
+
+    // Convert to sorted array
+    const attendanceHistory = dateRange.map(date => dailyAttendance[date])
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Calculate overall statistics
+    const totalDays = attendanceHistory.length;
+    const totalPossibleAttendance = totalDays * classInfo._count.students;
+    const totalPresent = attendanceHistory.reduce((sum, day) => sum + day.present, 0);
+    const totalAbsent = attendanceHistory.reduce((sum, day) => sum + day.absent, 0);
+    const overallAttendanceRate = totalPossibleAttendance > 0 ? 
+      ((totalPresent / totalPossibleAttendance) * 100).toFixed(1) : 0;
+
+    res.json({
+      classInfo: {
+        id: classInfo.id,
+        name: classInfo.name,
+        grade: classInfo.grade,
+        section: classInfo.section,
+        teacher: classInfo.teacher?.user?.name || 'No teacher assigned',
+        totalStudents: classInfo._count.students
+      },
+      dateRange: {
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+        totalDays
+      },
+      overallStats: {
+        totalPossibleAttendance,
+        totalPresent,
+        totalAbsent,
+        overallAttendanceRate: parseFloat(overallAttendanceRate)
+      },
+      dailyAttendance: attendanceHistory
+    });
+  } catch (error) {
+    console.error('Error fetching attendance by date range:', error);
+    res.status(500).json({ error: 'Failed to fetch attendance by date range' });
+  }
+};
+
+// Get all classes attendance summary for admin
+const getAllClassesAttendanceSummary = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    // Build date filter
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.gte = new Date(startDate);
+      dateFilter.lte = new Date(endDate);
+    } else {
+      // Default to last 7 days
+      const today = new Date();
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      dateFilter.gte = weekAgo;
+      dateFilter.lte = today;
+    }
+
+    // Get all classes with attendance statistics
+    const classes = await prisma.class.findMany({
+      include: {
+        teacher: {
+          include: { user: true }
+        },
+        _count: {
+          select: { students: true }
+        }
+      }
+    });
+
+    const classesWithStats = await Promise.all(
+      classes.map(async (classItem) => {
+        // Get attendance statistics for this class
+        const attendanceStats = await prisma.attendance.groupBy({
+          by: ['status'],
+          where: {
+            classId: classItem.id,
+            date: dateFilter
+          },
+          _count: {
+            status: true
+          }
+        });
+
+        // Calculate statistics
+        const presentCount = attendanceStats.find(stat => stat.status === 'PRESENT')?._count.status || 0;
+        const absentCount = attendanceStats.find(stat => stat.status === 'ABSENT')?._count.status || 0;
+        const lateCount = attendanceStats.find(stat => stat.status === 'LATE')?._count.status || 0;
+        const excusedCount = attendanceStats.find(stat => stat.status === 'EXCUSED')?._count.status || 0;
+        const totalRecords = presentCount + absentCount + lateCount + excusedCount;
+
+        // Get unique attendance dates for this class
+        const attendanceDates = await prisma.attendance.groupBy({
+          by: ['date'],
+          where: {
+            classId: classItem.id,
+            date: dateFilter
+          }
+        });
+
+        const totalPossibleAttendance = attendanceDates.length * classItem._count.students;
+        const attendanceRate = totalPossibleAttendance > 0 ? 
+          ((presentCount + lateCount + excusedCount) / totalPossibleAttendance * 100).toFixed(1) : 0;
+
+        return {
+          id: classItem.id,
+          name: classItem.name,
+          grade: classItem.grade,
+          section: classItem.section,
+          teacher: classItem.teacher?.user?.name || 'No teacher assigned',
+          totalStudents: classItem._count.students,
+          attendanceStats: {
+            totalRecords,
+            presentCount,
+            absentCount,
+            lateCount,
+            excusedCount,
+            attendanceRate: parseFloat(attendanceRate),
+            daysTracked: attendanceDates.length
+          }
+        };
+      })
+    );
+
+    // Calculate overall system statistics
+    const totalStudents = classesWithStats.reduce((sum, cls) => sum + cls.totalStudents, 0);
+    const totalPresent = classesWithStats.reduce((sum, cls) => sum + cls.attendanceStats.presentCount, 0);
+    const totalAbsent = classesWithStats.reduce((sum, cls) => sum + cls.attendanceStats.absentCount, 0);
+    const totalRecords = classesWithStats.reduce((sum, cls) => sum + cls.attendanceStats.totalRecords, 0);
+    const overallRate = totalRecords > 0 ? ((totalPresent / totalRecords) * 100).toFixed(1) : 0;
+
+    res.json({
+      dateRange: {
+        startDate: dateFilter.gte.toISOString().split('T')[0],
+        endDate: dateFilter.lte.toISOString().split('T')[0]
+      },
+      overallStats: {
+        totalClasses: classes.length,
+        totalStudents,
+        totalPresent,
+        totalAbsent,
+        totalRecords,
+        overallAttendanceRate: parseFloat(overallRate)
+      },
+      classes: classesWithStats
+    });
+  } catch (error) {
+    console.error('Error fetching all classes attendance summary:', error);
+    res.status(500).json({ error: 'Failed to fetch attendance summary' });
+  }
+};
+
+// Get detailed attendance report for admin with multiple classes
+const getAdminAttendanceReport = async (req, res) => {
+  try {
+    const { startDate, endDate, classIds } = req.query;
+    
+    // Build date filter
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.gte = new Date(startDate);
+      dateFilter.lte = new Date(endDate);
+    } else {
+      // Default to last 30 days
+      const today = new Date();
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+      dateFilter.gte = monthAgo;
+      dateFilter.lte = today;
+    }
+
+    // Build class filter
+    const classFilter = {};
+    if (classIds) {
+      const classIdArray = Array.isArray(classIds) ? classIds : classIds.split(',');
+      classFilter.in = classIdArray;
+    }
+
+    // Get attendance records with student and class details
+    const attendanceRecords = await prisma.attendance.findMany({
+      where: {
+        date: dateFilter,
+        ...(Object.keys(classFilter).length > 0 && { classId: classFilter })
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            rollNumber: true,
+            parent: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                    email: true,
+                    phone: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+            grade: true,
+            section: true,
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        marker: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      },
+      orderBy: [
+        { date: 'desc' },
+        { class: { name: 'asc' } },
+        { student: { rollNumber: 'asc' } }
+      ]
+    });
+
+    // Group by date for daily summaries
+    const dailySummaries = {};
+    attendanceRecords.forEach(record => {
+      const dateKey = record.date.toISOString().split('T')[0];
+      if (!dailySummaries[dateKey]) {
+        dailySummaries[dateKey] = {
+          date: dateKey,
+          classes: {},
+          totalPresent: 0,
+          totalAbsent: 0,
+          totalLate: 0,
+          totalExcused: 0
+        };
+      }
+
+      const classKey = record.class.id;
+      if (!dailySummaries[dateKey].classes[classKey]) {
+        dailySummaries[dateKey].classes[classKey] = {
+          classInfo: record.class,
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+          students: []
+        };
+      }
+
+      // Update counts
+      dailySummaries[dateKey].classes[classKey][record.status.toLowerCase()]++;
+      dailySummaries[dateKey]['total' + record.status.charAt(0) + record.status.slice(1).toLowerCase()]++;
+      
+      dailySummaries[dateKey].classes[classKey].students.push({
+        id: record.student.id,
+        name: record.student.name,
+        rollNumber: record.student.rollNumber,
+        status: record.status,
+        remarks: record.remarks,
+        parent: record.student.parent?.user || null
+      });
+    });
+
+    // Convert to array and sort by date
+    const dailyReports = Object.values(dailySummaries)
+      .map(day => ({
+        ...day,
+        classes: Object.values(day.classes)
+      }))
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.json({
+      dateRange: {
+        startDate: dateFilter.gte.toISOString().split('T')[0],
+        endDate: dateFilter.lte.toISOString().split('T')[0]
+      },
+      summary: {
+        totalRecords: attendanceRecords.length,
+        totalDays: dailyReports.length,
+        averageDailyAttendance: dailyReports.length > 0 ? 
+          (dailyReports.reduce((sum, day) => sum + day.totalPresent, 0) / dailyReports.length).toFixed(1) : 0
+      },
+      dailyReports,
+      rawRecords: attendanceRecords
+    });
+  } catch (error) {
+    console.error('Error fetching admin attendance report:', error);
+    res.status(500).json({ error: 'Failed to fetch attendance report' });
+  }
+};
+
 module.exports = {
   getAttendanceByClassAndDate,
   markAttendance,
   getAttendanceHistory,
   getAttendanceStats,
   getDetailedAttendanceByDate,
-  deleteAttendanceRecord
+  deleteAttendanceRecord,
+  getAttendanceByDateRange,
+  getAllClassesAttendanceSummary,
+  getAdminAttendanceReport
 };

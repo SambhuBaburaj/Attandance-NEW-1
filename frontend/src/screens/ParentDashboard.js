@@ -108,7 +108,7 @@ const ParentDashboard = ({ navigation }) => {
 
   const menuItems = [
     { title: 'View Children', icon: '👶', screen: 'ViewChildren' },
-    { title: 'Attendance History', icon: '📅', screen: 'AttendanceHistory' },
+    { title: 'Attendance History', icon: '📅', screen: 'ModernAttendanceHistory' },
     { title: 'Monthly Reports', icon: '📊', screen: 'MonthlyReports' },
     { title: 'Change Password', icon: '🔐', action: () => setShowPasswordModal(true) },
     { title: 'Contact Teacher', icon: '📞', screen: 'ContactTeacher' },

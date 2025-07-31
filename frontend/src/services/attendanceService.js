@@ -43,6 +43,30 @@ export const getAttendanceStats = async (classId, startDate = null, endDate = nu
   return response.data;
 };
 
+// Get attendance by date range with modern UI support
+export const getAttendanceByDateRange = async (classId, startDate = null, endDate = null) => {
+  const response = await apiClient.get('/attendance/range', {
+    params: { classId, startDate, endDate }
+  });
+  return response.data;
+};
+
+// Get all classes attendance summary for admin
+export const getAllClassesAttendanceSummary = async (startDate = null, endDate = null) => {
+  const response = await apiClient.get('/attendance/admin/summary', {
+    params: { startDate, endDate }
+  });
+  return response.data;
+};
+
+// Get detailed attendance report for admin
+export const getAdminAttendanceReport = async (startDate = null, endDate = null, classIds = null) => {
+  const response = await apiClient.get('/attendance/admin/report', {
+    params: { startDate, endDate, classIds }
+  });
+  return response.data;
+};
+
 // Delete attendance record
 export const deleteAttendanceRecord = async (attendanceId) => {
   const response = await apiClient.delete(`/attendance/${attendanceId}`);
