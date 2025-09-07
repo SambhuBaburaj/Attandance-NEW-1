@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const UniversalNotificationService = require('../services/universalNotificationService');
 const whatsappService = require('../services/whatsappService');
 const PushNotificationService = require('../services/pushNotificationService');
 const prisma = new PrismaClient();
@@ -99,101 +100,140 @@ const sendCustomNotification = async (req, res) => {
       });
     }
 
-    // Create notifications for all target parents
-    const notifications = [];
-    const whatsappData = [];
+    // Use Universal Notification Service to send all types of notifications
     const parentIds = targetParents.map(p => p.id);
-
-    for (const parent of targetParents) {
-      // Debug: Check if parent exists
-      console.log('Creating notification for parent:', parent.id);
-      
-      // Create in-app notification
-      const notification = await prisma.parentNotification.create({
-        data: {
-          parentId: parent.id,
-          type: 'CUSTOM',
-          title,
-          message,
-          priority,
-          sentBy: userId
-        }
-      });
-
-      // Fetch the created notification with relations
-      const notificationWithRelations = await prisma.parentNotification.findUnique({
-        where: { id: notification.id },
-        include: {
-          parent: {
-            include: {
-              user: {
-                select: { name: true, email: true }
-              }
-            }
-          },
-          sender: {
-            select: { name: true, role: true }
-          }
-        }
-      });
-
-      notifications.push(notificationWithRelations);
-
-      // Prepare WhatsApp notification if requested and parent opted in
-      if (sendWhatsApp && parent.whatsappOptIn && parent.phone) {
-        whatsappData.push({
-          parentId: parent.id,
-          parentName: parent.user.name,
-          parentPhone: parent.phone,
-          title,
-          message,
-          senderName: req.user.name,
-          senderRole: req.user.role
-        });
-      }
-    }
-
-    // Send push notifications to all target parents
-    let pushNotificationResult = null;
+    
     try {
-      pushNotificationResult = await PushNotificationService.sendCustomNotification(
+      const result = await UniversalNotificationService.sendNotification(
         parentIds,
         title,
         message,
-        priority
+        {
+          priority,
+          type: 'CUSTOM',
+          sendWhatsApp,
+          sendEmail: true,
+          sendSms: priority === 'HIGH',
+          sentBy: req.user.name
+        }
       );
-      console.log('Push notifications sent:', pushNotificationResult);
-    } catch (pushError) {
-      console.error('Error sending push notifications:', pushError);
-    }
 
-    // Send WhatsApp notifications if requested
-    let whatsappResult = null;
-    if (whatsappData.length > 0) {
-      try {
-        whatsappResult = await whatsappService.sendBulkCustomNotifications(whatsappData);
-      } catch (whatsappError) {
-        console.error('Error sending WhatsApp notifications:', whatsappError);
+      console.log('Universal notification result:', result);
+
+      res.status(201).json({
+        message: 'Notifications sent successfully',
+        notificationsSent: result.totalParents,
+        targetType,
+        deliveryRate: result.deliveryRate + '%',
+        overallSuccess: result.overallSuccess,
+        results: {
+          inApp: {
+            sent: result.inAppNotifications.sent,
+            failed: result.inAppNotifications.failed,
+            errors: result.inAppNotifications.errors
+          },
+          push: {
+            sent: result.pushNotifications.sent,
+            failed: result.pushNotifications.failed,
+            errors: result.pushNotifications.errors
+          },
+          email: {
+            sent: result.emailNotifications.sent,
+            failed: result.emailNotifications.failed,
+            errors: result.emailNotifications.errors
+          },
+          whatsapp: sendWhatsApp ? {
+            sent: result.whatsappNotifications.sent,
+            failed: result.whatsappNotifications.failed,
+            errors: result.whatsappNotifications.errors
+          } : null,
+          sms: (priority === 'HIGH') ? {
+            sent: result.smsNotifications.sent,
+            failed: result.smsNotifications.failed,
+            errors: result.smsNotifications.errors
+          } : null
+        }
+      });
+
+    } catch (error) {
+      console.error('Universal notification service error:', error);
+      
+      // Fallback to old method if universal service fails
+      console.log('Falling back to original notification method...');
+      
+      const notifications = [];
+      const whatsappData = [];
+
+      for (const parent of targetParents) {
+        // Create in-app notification
+        const notification = await prisma.parentNotification.create({
+          data: {
+            parentId: parent.id,
+            type: 'CUSTOM',
+            title,
+            message,
+            priority,
+            sentBy: userId,
+            deliveryStatus: 'PENDING'
+          }
+        });
+
+        notifications.push(notification);
+
+        // Prepare WhatsApp notification if requested and parent opted in
+        if (sendWhatsApp && parent.whatsappOptIn && parent.phone) {
+          whatsappData.push({
+            parentId: parent.id,
+            parentName: parent.user.name,
+            parentPhone: parent.phone,
+            title,
+            message,
+            senderName: req.user.name,
+            senderRole: req.user.role
+          });
+        }
       }
-    }
 
-    res.status(201).json({
-      message: 'Custom notifications sent successfully',
-      notificationsSent: notifications.length,
-      targetType,
-      notifications,
-      pushNotificationResult: pushNotificationResult ? {
-        success: pushNotificationResult.success,
-        sent: pushNotificationResult.result?.successful || 0,
-        failed: pushNotificationResult.result?.failed || 0,
-        total: pushNotificationResult.result?.totalSent || 0
-      } : null,
-      whatsappResult: whatsappResult ? {
-        sent: whatsappResult.sentCount,
-        failed: whatsappResult.errorCount,
-        errors: whatsappResult.errors
-      } : null
-    });
+      // Send push notifications
+      let pushResult = null;
+      try {
+        pushResult = await PushNotificationService.sendCustomNotification(
+          parentIds,
+          title,
+          message,
+          priority
+        );
+      } catch (pushError) {
+        console.error('Push notification fallback failed:', pushError);
+      }
+
+      // Send WhatsApp notifications if requested
+      let whatsappResult = null;
+      if (whatsappData.length > 0) {
+        try {
+          whatsappResult = await whatsappService.sendBulkCustomNotifications(whatsappData);
+        } catch (whatsappError) {
+          console.error('WhatsApp notification fallback failed:', whatsappError);
+        }
+      }
+
+      res.status(201).json({
+        message: 'Notifications sent using fallback method',
+        notificationsSent: notifications.length,
+        targetType,
+        fallbackUsed: true,
+        pushNotificationResult: pushResult ? {
+          success: pushResult.success,
+          sent: pushResult.result?.successful || 0,
+          failed: pushResult.result?.failed || 0
+        } : null,
+        whatsappResult: whatsappResult ? {
+          sent: whatsappResult.sentCount,
+          failed: whatsappResult.errorCount,
+          errors: whatsappResult.errors
+        } : null
+      });
+    }
 
   } catch (error) {
     console.error('Error sending custom notification:', error);

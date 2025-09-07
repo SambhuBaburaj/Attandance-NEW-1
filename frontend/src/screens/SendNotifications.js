@@ -13,7 +13,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { API_BASE_URL } from '../config/api';
+import apiClient, { getErrorMessage } from '../services/apiClient';
 
 const SendNotifications = ({ navigation }) => {
   const { user, token } = useAuth();
@@ -43,24 +43,13 @@ const SendNotifications = ({ navigation }) => {
 
   const fetchNotificationTargets = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/notifications/targets`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setClasses(data.classes);
-        setParents(data.parents);
-        setTargetSummary(data.summary);
-      } else {
-        throw new Error('Failed to fetch targets');
-      }
+      const response = await apiClient.get('/notifications/targets');
+      setClasses(response.data.classes);
+      setParents(response.data.parents);
+      setTargetSummary(response.data.summary);
     } catch (error) {
       console.error('Error fetching notification targets:', error);
-      Alert.alert('Error', 'Failed to load notification targets');
+      Alert.alert('Error', getErrorMessage(error));
     } finally {
       setLoadingTargets(false);
     }
@@ -92,46 +81,38 @@ const SendNotifications = ({ navigation }) => {
         requestBody.targetIds = selectedTargets;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/notifications/send`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
+      const response = await apiClient.post('/notifications/send', requestBody);
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok) {
-        Alert.alert(
-          'Success',
-          `Notification sent to ${data.notificationsSent} recipients${
-            data.whatsappResult ? 
-            `\nWhatsApp: ${data.whatsappResult.sent} sent, ${data.whatsappResult.failed} failed` : 
-            ''
-          }`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Reset form
-                setTitle('');
-                setMessage('');
-                setTargetType('ALL_PARENTS');
-                setSelectedTargets([]);
-                setPriority('NORMAL');
-                setSendWhatsApp(false);
-              }
+      Alert.alert(
+        'Success',
+        `Notification sent to ${data.notificationsSent} recipients${
+          data.pushNotificationResult ? 
+          `\nPush: ${data.pushNotificationResult.sent} sent, ${data.pushNotificationResult.failed} failed` : 
+          ''
+        }${
+          data.whatsappResult ? 
+          `\nWhatsApp: ${data.whatsappResult.sent} sent, ${data.whatsappResult.failed} failed` : 
+          ''
+        }`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Reset form
+              setTitle('');
+              setMessage('');
+              setTargetType('ALL_PARENTS');
+              setSelectedTargets([]);
+              setPriority('NORMAL');
+              setSendWhatsApp(false);
             }
-          ]
-        );
-      } else {
-        throw new Error(data.error || 'Failed to send notification');
-      }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Error sending notification:', error);
-      Alert.alert('Error', error.message || 'Failed to send notification');
+      Alert.alert('Error', getErrorMessage(error));
     } finally {
       setLoading(false);
     }

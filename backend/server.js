@@ -40,6 +40,12 @@ app.use("/api/teachers", teacherRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin", adminRoutes);
 
+// Test routes (development only)
+if (process.env.NODE_ENV !== 'production') {
+  const testRoutes = require("./routes/test");
+  app.use("/api/test", testRoutes);
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
