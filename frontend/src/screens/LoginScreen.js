@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +26,8 @@ const LoginScreen = ({ navigation }) => {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignupMode, setIsSignupMode] = useState(false);
+  
+  const { width, height } = Dimensions.get('window');
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -85,8 +89,10 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#6366f1" />
+      
       <LinearGradient
-        colors={theme.gradient.primary}
+        colors={['#6366f1', '#8b5cf6', '#a855f7']}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -97,36 +103,50 @@ const LoginScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.content}>
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
+          {/* Header Section */}
+          <View style={styles.headerSection}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoIcon}>🎓</Text>
+              <LinearGradient
+                colors={['#ffffff20', '#ffffff10']}
+                style={styles.logoGradient}
+              >
+                <Text style={styles.logoIcon}>🎓</Text>
+              </LinearGradient>
             </View>
-            <Text style={styles.appName}>SchoolSync</Text>
-            <Text style={styles.tagline}>Smart Attendance Management</Text>
+            <Text style={styles.appName}>AttendanceApp</Text>
+            <Text style={styles.tagline}>Smart School Management</Text>
           </View>
 
-          {/* Form Section */}
-          <View style={styles.formSection}>
-            <View style={styles.formContainer}>
-              <Text style={styles.formTitle}>
-                {isSignupMode ? 'Create Admin Account' : 'Welcome Back'}
-              </Text>
-              <Text style={styles.formSubtitle}>
-                {isSignupMode 
-                  ? 'Set up your administrator account' 
-                  : 'Sign in to continue to your dashboard'
-                }
-              </Text>
+          {/* Card Container */}
+          <View style={styles.cardContainer}>
+            <LinearGradient
+              colors={['#ffffff', '#fafafa']}
+              style={styles.card}
+            >
+              {/* Form Header */}
+              <View style={styles.formHeader}>
+                <Text style={styles.formTitle}>
+                  {isSignupMode ? '👋 Create Account' : '🎉 Welcome Back'}
+                </Text>
+                <Text style={styles.formSubtitle}>
+                  {isSignupMode 
+                    ? 'Setup your admin account to get started' 
+                    : 'Sign in to access your dashboard'
+                  }
+                </Text>
+              </View>
 
+              {/* Input Fields */}
               <View style={styles.inputContainer}>
                 {isSignupMode && (
-                  <View style={styles.inputWrapper}>
-                    <Text style={styles.inputLabel}>Full Name</Text>
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputIcon}>
+                      <Text style={styles.iconText}>👤</Text>
+                    </View>
                     <TextInput
                       style={styles.input}
-                      placeholder="Enter your full name"
-                      placeholderTextColor={theme.textSecondary}
+                      placeholder="Full Name"
+                      placeholderTextColor="#9ca3af"
                       value={name}
                       onChangeText={setName}
                       autoCapitalize="words"
@@ -134,12 +154,14 @@ const LoginScreen = ({ navigation }) => {
                   </View>
                 )}
                 
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.inputLabel}>Email Address</Text>
+                <View style={styles.inputGroup}>
+                  <View style={styles.inputIcon}>
+                    <Text style={styles.iconText}>📧</Text>
+                  </View>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter your email"
-                    placeholderTextColor={theme.textSecondary}
+                    placeholder="Email Address"
+                    placeholderTextColor="#9ca3af"
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -148,12 +170,14 @@ const LoginScreen = ({ navigation }) => {
                   />
                 </View>
 
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.inputLabel}>Password</Text>
+                <View style={styles.inputGroup}>
+                  <View style={styles.inputIcon}>
+                    <Text style={styles.iconText}>🔐</Text>
+                  </View>
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter your password"
-                    placeholderTextColor={theme.textSecondary}
+                    placeholder="Password"
+                    placeholderTextColor="#9ca3af"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -162,42 +186,59 @@ const LoginScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              <SimpleButton
-                title={isSignupMode ? 'Create Account' : 'Sign In'}
-                icon={isSignupMode ? '🔐' : '👤'}
-                onPress={isSignupMode ? handleSignup : handleLogin}
-                loading={loading}
-                variant="primary"
-                size="large"
-                style={styles.actionButton}
-              />
-
+              {/* Action Button */}
               <TouchableOpacity
-                style={styles.switchModeButton}
+                style={[styles.actionButton, loading && styles.buttonDisabled]}
+                onPress={isSignupMode ? handleSignup : handleLogin}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={loading ? ['#d1d5db', '#9ca3af'] : ['#6366f1', '#8b5cf6']}
+                  style={styles.buttonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <>
+                      <Text style={styles.buttonIcon}>
+                        {isSignupMode ? '🚀' : '✨'}
+                      </Text>
+                      <Text style={styles.buttonText}>
+                        {isSignupMode ? 'Create Account' : 'Sign In'}
+                      </Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Switch Mode */}
+              <TouchableOpacity
+                style={styles.switchButton}
                 onPress={() => {
                   setIsSignupMode(!isSignupMode);
                   setName('');
                   setEmail('');
                   setPassword('');
                 }}
+                activeOpacity={0.7}
               >
-                <Text style={styles.switchModeText}>
+                <Text style={styles.switchText}>
                   {isSignupMode 
                     ? 'Already have an account? Sign In' 
-                    : 'Need admin access? Create Account'
+                    : 'Need access? Create Account'
                   }
                 </Text>
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              {isSignupMode 
-                ? '⚠️ Only authorized personnel should create admin accounts'
-                : ''
-              }
+              {isSignupMode && '🔒 Admin accounts require authorization'}
             </Text>
           </View>
         </View>
@@ -216,128 +257,162 @@ const getStyles = (theme) => StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
   },
-  logoSection: {
+  headerSection: {
     alignItems: 'center',
     paddingTop: 60,
-    flex: 0.4,
-    justifyContent: 'center',
+    paddingBottom: 40,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 20,
+  },
+  logoGradient: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
   },
   logoIcon: {
-    fontSize: 50,
+    fontSize: 60,
   },
   appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '800',
     color: '#ffffff',
     marginBottom: 8,
     textAlign: 'center',
+    letterSpacing: 1,
   },
   tagline: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
-    fontWeight: '400',
+    fontWeight: '300',
   },
-  formSection: {
-    flex: 0.5,
+  cardContainer: {
+    flex: 1,
+    marginBottom: 40,
   },
-  formContainer: {
-    backgroundColor: theme.surface,
-    borderRadius: 24,
-    padding: 24,
+  card: {
+    borderRadius: 28,
+    padding: 32,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.2,
+    shadowRadius: 25,
+    elevation: 15,
+  },
+  formHeader: {
+    marginBottom: 32,
+    alignItems: 'center',
   },
   formTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.text,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1f2937',
     textAlign: 'center',
     marginBottom: 8,
   },
   formSubtitle: {
     fontSize: 16,
-    color: theme.textSecondary,
+    color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 32,
     lineHeight: 24,
+    fontWeight: '400',
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
-  inputWrapper: {
-    marginBottom: 20,
+  inputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    borderRadius: 16,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.text,
-    marginBottom: 8,
+  inputIcon: {
+    width: 24,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  iconText: {
+    fontSize: 20,
   },
   input: {
-    backgroundColor: theme.background,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.border,
+    flex: 1,
+    paddingVertical: 16,
     fontSize: 16,
-    color: theme.text,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    color: '#1f2937',
+    fontWeight: '500',
   },
   actionButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
     marginBottom: 20,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  switchModeButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  buttonGradient: {
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.primary,
-    marginTop: 8,
+    justifyContent: 'center',
   },
-  switchModeText: {
-    color: theme.primary,
+  buttonIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  switchButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  switchText: {
+    color: '#6366f1',
     fontSize: 16,
     fontWeight: '600',
   },
   footer: {
-    flex: 0.1,
-    justifyContent: 'flex-end',
-    paddingBottom: 30,
     alignItems: 'center',
+    paddingBottom: 20,
   },
   footerText: {
-    fontSize: 13,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: 20,
+    fontWeight: '400',
   },
 });
 

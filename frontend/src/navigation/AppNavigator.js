@@ -21,6 +21,9 @@ import ViewChildren from '../screens/ViewChildren';
 import SendNotifications from '../screens/SendNotifications';
 import ManageTeachers from '../screens/ManageTeachers';
 import ViewReports from '../screens/ViewReports';
+import ProfileScreen from '../screens/ProfileScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import HelpSupportScreen from '../screens/HelpSupportScreen';
 
 const Stack = createStackNavigator();
 
@@ -81,6 +84,9 @@ const AppNavigator = () => {
         <Stack.Screen name="SendNotifications" component={SendNotifications} />
         <Stack.Screen name="ManageTeachers" component={ManageTeachers} />
         <Stack.Screen name="ViewReports" component={ViewReports} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

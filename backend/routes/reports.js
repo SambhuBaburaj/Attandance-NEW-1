@@ -7,21 +7,21 @@ const {
   getTeacherReport,
   getDashboardStats
 } = require('../controllers/reportController');
-const auth = require('../middleware/auth');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 // Get attendance report
-router.get('/attendance', auth, getAttendanceReport);
+router.get('/attendance', authenticateToken, getAttendanceReport);
 
 // Get class report
-router.get('/class', auth, getClassReport);
+router.get('/class', authenticateToken, getClassReport);
 
 // Get student report
-router.get('/student', auth, getStudentReport);
+router.get('/student', authenticateToken, getStudentReport);
 
 // Get teacher report
-router.get('/teacher', auth, getTeacherReport);
+router.get('/teacher', authenticateToken, authorizeRole(['ADMIN']), getTeacherReport);
 
 // Get dashboard statistics
-router.get('/dashboard-stats', auth, getDashboardStats);
+router.get('/dashboard-stats', authenticateToken, getDashboardStats);
 
 module.exports = router;

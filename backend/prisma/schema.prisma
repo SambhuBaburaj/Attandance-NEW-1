@@ -50,10 +50,12 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  teacherProfile    TeacherProfile?
-  parentProfile     ParentProfile?
-  markedAttendance  Attendance[]
-  sentNotifications ParentNotification[] @relation("SentNotifications")
+  teacherProfile      TeacherProfile?
+  parentProfile       ParentProfile?
+  markedAttendance    Attendance[]
+  sentNotifications   ParentNotification[]   @relation("SentNotifications")
+  createdTemplates    NotificationTemplate[] @relation("CreatedTemplates")
+  generatedReports    AttendanceReport[]     @relation("GeneratedReports")
   
   @@map("users")
 }
@@ -74,10 +76,11 @@ model TeacherProfile {
   updatedAt    DateTime  @updatedAt
 
   // Relations
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classes       Class[]
-  messages      ParentMessage[]
-  classSubjects ClassSubject[]
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes         Class[]
+  messages        ParentMessage[]
+  classSubjects   ClassSubject[]
+  attendanceReports AttendanceReport[]
   
   @@map("teacher_profiles")
 }
@@ -127,10 +130,11 @@ model Class {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  teacher       TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
-  students      Student[]
-  attendance    Attendance[]
-  classSubjects ClassSubject[]
+  teacher           TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  students          Student[]
+  attendance        Attendance[]
+  classSubjects     ClassSubject[]
+  attendanceReports AttendanceReport[]
   
   @@map("classes")
 }
@@ -155,11 +159,12 @@ model Student {
   updatedAt         DateTime  @updatedAt
 
   // Relations
-  class         Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
-  parent        ParentProfile        @relation("ParentChildren", fields: [parentId], references: [id], onDelete: Cascade)
-  attendance    Attendance[]
-  notifications ParentNotification[]
-  messages      ParentMessage[]
+  class             Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
+  parent            ParentProfile        @relation("ParentChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  attendance        Attendance[]
+  notifications     ParentNotification[]
+  messages          ParentMessage[]
+  attendanceReports AttendanceReport[]
   
   @@map("students")
 }
@@ -191,19 +196,23 @@ model Attendance {
 }
 
 model ParentNotification {
-  id        String               @id @default(cuid())
-  parentId  String
-  studentId String?              // Made optional for general notifications
-  type      NotificationType
-  title     String
-  message   String
-  isRead    Boolean              @default(false)
-  sentBy    String?              // ID of user who sent the notification (for custom messages)
-  priority  NotificationPriority @default(NORMAL)
-  sentAt    DateTime             @default(now())
-  readAt    DateTime?
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
+  id             String               @id @default(cuid())
+  parentId       String
+  studentId      String?              // Made optional for general notifications
+  type           NotificationType
+  title          String
+  message        String
+  isRead         Boolean              @default(false)
+  sentBy         String?              // ID of user who sent the notification (for custom messages)
+  priority       NotificationPriority @default(NORMAL)
+  sentAt         DateTime             @default(now())
+  readAt         DateTime?
+  deliveryStatus String?              @default("PENDING") // PENDING, DELIVERED, FAILED
+  pushSent       Boolean              @default(false)
+  emailSent      Boolean              @default(false)
+  whatsappSent   Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   // Relations
   parent  ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
@@ -214,6 +223,7 @@ model ParentNotification {
   @@index([studentId])
   @@index([type])
   @@index([sentBy])
+  @@index([deliveryStatus])
   @@map("parent_notifications")
 }
 
@@ -304,4 +314,106 @@ model AttendanceSettings {
   updatedAt            DateTime @updatedAt
   
   @@map("attendance_settings")
+}
+
+model SchoolSettings {
+  id                    String   @id @default(cuid())
+  schoolName            String
+  schoolAddress         String?
+  schoolPhone           String?
+  schoolEmail           String?
+  principalName         String?
+  sessionStartTime      String   @default("09:00:00")
+  sessionEndTime        String   @default("15:00:00")
+  workingDays           String   @default("MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY")
+  timeZone              String   @default("UTC")
+  academicYearStart     DateTime @db.Date
+  academicYearEnd       DateTime @db.Date
+  notificationSettings  Json?    // JSON for various notification preferences
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@map("school_settings")
+}
+
+model AcademicYear {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  terms Term[]
+  
+  @@index([isActive])
+  @@map("academic_years")
+}
+
+model Term {
+  id             String      @id @default(cuid())
+  name           String
+  academicYearId String
+  startDate      DateTime    @db.Date
+  endDate        DateTime    @db.Date
+  isActive       Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  // Relations
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  
+  @@index([academicYearId])
+  @@index([isActive])
+  @@map("terms")
+}
+
+model NotificationTemplate {
+  id          String               @id @default(cuid())
+  name        String
+  type        NotificationType
+  title       String
+  message     String
+  variables   String[]             // Array of variable names that can be substituted
+  priority    NotificationPriority @default(NORMAL)
+  isActive    Boolean              @default(true)
+  createdBy   String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  // Relations
+  creator User @relation("CreatedTemplates", fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  @@index([type])
+  @@index([isActive])
+  @@map("notification_templates")
+}
+
+model AttendanceReport {
+  id          String   @id @default(cuid())
+  reportType  String   // DAILY, WEEKLY, MONTHLY, CUSTOM
+  classId     String?
+  studentId   String?
+  teacherId   String?
+  startDate   DateTime @db.Date
+  endDate     DateTime @db.Date
+  reportData  Json     // JSON containing the report statistics
+  generatedBy String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  class     Class?          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student   Student?        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher   TeacherProfile? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  generator User            @relation("GeneratedReports", fields: [generatedBy], references: [id], onDelete: Cascade)
+  
+  @@index([reportType])
+  @@index([classId])
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([startDate, endDate])
+  @@map("attendance_reports")
 }

@@ -408,6 +408,106 @@ const unassignTeacherFromClass = async (req, res) => {
   }
 };
 
+// Get current teacher's profile
+const getProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const teacherProfile = await prisma.teacherProfile.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            createdAt: true
+          }
+        },
+        classes: {
+          include: {
+            _count: {
+              select: { students: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!teacherProfile) {
+      return res.status(404).json({ error: 'Teacher profile not found' });
+    }
+
+    res.json(teacherProfile);
+  } catch (error) {
+    console.error('Error fetching teacher profile:', error);
+    res.status(500).json({ error: 'Failed to fetch teacher profile' });
+  }
+};
+
+// Update current teacher's profile
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      name,
+      phone,
+      address,
+      qualification,
+      experience
+    } = req.body;
+
+    // Get existing profile
+    const existingProfile = await prisma.teacherProfile.findUnique({
+      where: { userId },
+      include: { user: true }
+    });
+
+    if (!existingProfile) {
+      return res.status(404).json({ error: 'Teacher profile not found' });
+    }
+
+    // Update in transaction
+    const result = await prisma.$transaction(async (prisma) => {
+      // Update user info
+      if (name) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { name }
+        });
+      }
+
+      // Update teacher profile
+      const updatedProfile = await prisma.teacherProfile.update({
+        where: { userId },
+        data: {
+          phone,
+          address,
+          qualification,
+          experience: experience ? parseInt(experience) : null
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              createdAt: true
+            }
+          }
+        }
+      });
+
+      return updatedProfile;
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error updating teacher profile:', error);
+    res.status(500).json({ error: 'Failed to update teacher profile' });
+  }
+};
+
 module.exports = {
   getAllTeachers,
   getTeacherById,
@@ -416,5 +516,7 @@ module.exports = {
   deleteTeacher,
   getTeacherClasses,
   assignTeacherToClass,
-  unassignTeacherFromClass
+  unassignTeacherFromClass,
+  getProfile,
+  updateProfile
 };
